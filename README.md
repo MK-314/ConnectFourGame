@@ -1,0 +1,1 @@
+## In oder to start console ConnectFourGame - run Main.kt

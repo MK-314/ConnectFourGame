@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.game.connectFour
 
 import org.junit.Test
 
