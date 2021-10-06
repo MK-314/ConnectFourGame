@@ -24,7 +24,7 @@ class BoardCell {
     }
 }
 
-class BRow(boardCol: Int?) {
+class BoardRow(boardCol: Int?) {
     var rowOfCells = mutableListOf<BoardCell>()
 
     init {
@@ -41,14 +41,14 @@ class Board {
         var dimensionsBoard: String? = null
         var boardCol: Int? = 7
         var boardRow: Int? = 6
-        var bField = mutableListOf<BRow>()
+        var boardField = mutableListOf<BoardRow>()
 
         fun drawBoard(player1: Player, player2: Player) {
             println("${player1.name} VS ${player2.name}")
             println("$boardRow X $boardCol board")
-            drawnums()
+            drawNums()
             repeat(boardRow!!) {
-                bField.add(BRow(boardCol))
+                boardField.add(BoardRow(boardCol))
                 println()
                 for (i in 1..boardCol!! + 1) {
                     when (i) {
@@ -58,34 +58,182 @@ class Board {
                 }
             }
             println()
-            drawbottom()
+            drawBottom()
         }
 
         fun redraw(player: Player, c: Char) {
-            drawnums()
+            drawNums()
             val colIndex = Game.allChoices.filter { it.equals(player.choice) }
-            val lastrow = bField[bField.lastIndex - colIndex.size]
+            val lastrow = boardField[boardField.lastIndex - colIndex.size]
             val playerCell = lastrow.rowOfCells.get(player.choice!!.toInt() - 1)
             playerCell.setCellValue(c)
             println()
-            for (row in bField) {
+            for (row in boardField) {
                 for (cell in row.rowOfCells) {
                     print(cell.cellValue)
                 }
                 println()
             }
-            drawbottom()
+            drawBottom()
             Game.allChoices.add(player.choice!!)
+            checkWinner(player, c)
         }
 
-        private fun drawbottom() {
+        private fun checkWinner(player: Player, c: Char) {
+            horizontalCheck(player, c)
+            verticalCheck(player, c)
+            checkXdirections(player, c, boardCol)
+            checkXdirections(player, c, boardCol?.minus(2))
+            checkifDraw()
+        }
+
+        private fun checkifDraw() {
+            var strOfField = ""
+            // making a string
+            for (row in boardField) {
+                for (cell in row.rowOfCells) {
+                    strOfField += cell.cellValue?.get(1)
+                }
+            }
+            when {
+                ' ' !in strOfField -> {
+                    println()
+                    println("It is a draw")
+                    println("Game over!")
+                    Game.over = !Game.over
+                }
+            }
+        }
+
+        private fun checkXdirections(player: Player, c: Char, spacesBeforeCheck: Int?) {
+            var stringField = ""
+            var stringFieldArr = "".toCharArray()
+            var counter = 0
+            var hit = false
+            var colCounter = spacesBeforeCheck
+            // making a string from Game's field
+            for (row in boardField) {
+                for (cell in row.rowOfCells) {
+                    stringField += cell.cellValue?.get(1)
+                }
+            }
+            // iterating string to find a winner
+            for ((i, letter) in stringField.withIndex()) {
+                // fist hit:
+                if ((letter == c) && !hit) {
+                    // checking whether or not hit on the same line. We don't wanna have it on the same line
+                    stringFieldArr = stringField.toCharArray()
+                    // marking hit in array by via char 'g'
+                    stringFieldArr[i] = 'g'
+                    // end of marking (same line)
+                    counter++
+                    hit = true
+                    continue
+                }
+                // following hits:
+                if (hit) {
+                    if (colCounter == 0) {
+                        if (letter == c) {
+                            // marking cell with char 'g'
+                            stringFieldArr[i] = 'g'
+                            // we are checking X direction winner so we don't wanna see 2 hits on the same line
+                            val resultOfLineCheck = sameLineCheck(stringFieldArr, hit, counter)
+                            counter = resultOfLineCheck.first
+                            hit = resultOfLineCheck.second
+                            //==============
+                            counter++
+                            colCounter = spacesBeforeCheck
+                            if (counter == 4) {
+                                winnerMsg(player)
+                            }
+                            continue
+                        } else {
+                            hit = false
+                        }
+                    }
+                    colCounter = colCounter?.minus(1)
+                }
+            }
+        }
+
+        private fun sameLineCheck(
+            stringFieldArr: CharArray,
+            hit: Boolean,
+            counter: Int
+        ): Pair<Int, Boolean> {
+            var thisHit = hit
+            var thisCounter = counter
+            var cellCounterInOneRow = 0
+            var oneline = ""
+            // array of lines / rows
+            val lineArr = mutableListOf<String>()
+            // making lines with number of chars == number of columns
+            for (item in stringFieldArr) {
+                if (cellCounterInOneRow != boardCol) {
+                    oneline += item
+                    cellCounterInOneRow++
+                } else {
+                    lineArr.add(oneline)
+                    cellCounterInOneRow = 0
+                    oneline = ""
+                    oneline += item
+                    cellCounterInOneRow++
+                }
+            }
+            // checking whether or not two marked cells in line one if so -> it's not a winner -> return false
+            for (row in lineArr) {
+                if (row.count { it == 'g' } > 1) {
+                    thisHit = false
+                    thisCounter = -1
+                }
+            }
+            return Pair(thisCounter, thisHit)
+        }
+
+
+        private fun verticalCheck(player: Player, c: Char) {
+            var counter = 0
+            for (i in 0 until boardCol!!) {
+                boardField.forEach { row ->
+                    if (row.rowOfCells[i].cellValue?.get(1) == c) counter++ else counter = 0
+                    if (counter == 4) {
+                        winnerMsg(player)
+                    }
+                }
+                counter = 0
+            }
+        }
+
+        private fun horizontalCheck(player: Player, c: Char) {
+            boardField.forEach { row ->
+                var counter = 0
+                row.rowOfCells.forEach { cell ->
+                    when (c) {
+                        cell.cellValue!!.get(1) -> counter++
+                        else -> counter = 0
+                    }
+                    if (counter == 4) {
+                        winnerMsg(player)
+                    }
+                }
+            }
+        }
+
+        private fun winnerMsg(player: Player) {
+            println()
+            println("Player ${player.name} won")
+            println("Game over!")
+            Game.over = !Game.over
+        }
+
+        private fun drawBottom() {
             for (i in 1..boardCol!! * 2 + 1) {
                 print("=")
             }
 
         }
 
-        private fun drawnums() {
+        private fun drawNums() {
             print(" ")
             for (i in 1..boardCol!!) {
                 print("$i ")
@@ -93,7 +241,7 @@ class Board {
         }
 
         fun columnIsFull(player: Player): Boolean {
-            val fistrow = bField.get(0)
+            val fistrow = boardField.get(0)
             val playerCell = fistrow.rowOfCells.get(player.choice!!.toInt() - 1)
             return !playerCell.checkCell()
         }
@@ -183,7 +331,7 @@ class Game {
 fun main() {
     val player1 = Player()
     val player2 = Player()
-    var gameSwitchBoolean: Boolean = true
+    var gameSwitchBoolean = true
 
     Game.greeting()
     player1.setpName("First player's name:")
