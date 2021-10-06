@@ -2,6 +2,7 @@ package com.game.connectFour
 
 
 class Player {
+    var score = 0
     var choice: String? = null
     var name: String? = null
     fun setpName(askForName: String) {
@@ -46,6 +47,17 @@ class Board {
         fun drawBoard(player1: Player, player2: Player) {
             println("${player1.name} VS ${player2.name}")
             println("$boardRow X $boardCol board")
+            when (Game.numOfGames.count()) {
+                1 -> println("Single game")
+                else -> {
+                    Game.singleGame = false
+                    println("Total ${Game.numOfGames.count()} games\nGame #${Game.numOfGames[0]}")
+                }
+            }
+            drawInnerPart()
+        }
+
+        private fun drawInnerPart() {
             drawNums()
             repeat(boardRow!!) {
                 boardField.add(BoardRow(boardCol))
@@ -63,7 +75,7 @@ class Board {
 
         fun redraw(player: Player, c: Char) {
             drawNums()
-            val colIndex = Game.allChoices.filter { it.equals(player.choice) }
+            val colIndex = Game.allChoices.filter { it == player.choice }
             val lastrow = boardField[boardField.lastIndex - colIndex.size]
             val playerCell = lastrow.rowOfCells.get(player.choice!!.toInt() - 1)
             playerCell.setCellValue(c)
@@ -96,11 +108,28 @@ class Board {
                 }
             }
             when {
+                Game.over -> return
                 ' ' !in strOfField -> {
-                    println()
                     println("It is a draw")
-                    println("Game over!")
-                    Game.over = !Game.over
+                    if (Game.singleGame) {
+                        println("Game over!")
+                        Game.over = true
+                    } else {
+                        println("Score")
+                        Game.player1.score += 1
+                        Game.player2.score += 1
+                        println("${Game.player1.name}: ${Game.player1.score} ${Game.player2.name}: ${Game.player2.score}")
+                        Game.numOfGames.removeAt(0)
+                        Game.allChoices = mutableListOf<String>()
+                        boardField = mutableListOf<BoardRow>()
+                        if (Game.numOfGames.count() == 0) {
+                            println("Game over!")
+                            Game.over = true
+                        } else {
+                            println("Game #${Game.numOfGames[0]}")
+                            drawInnerPart()
+                        }
+                    }
                 }
             }
         }
@@ -222,8 +251,24 @@ class Board {
         private fun winnerMsg(player: Player) {
             println()
             println("Player ${player.name} won")
-            println("Game over!")
-            Game.over = !Game.over
+            if (Game.singleGame) {
+                println("Game over!")
+                Game.over = true
+            } else {
+                println("Score")
+                player.score += 2
+                println("${Game.player1.name}: ${Game.player1.score} ${Game.player2.name}: ${Game.player2.score}")
+                Game.numOfGames.removeAt(0)
+                Game.allChoices = mutableListOf<String>()
+                boardField = mutableListOf<BoardRow>()
+                if (Game.numOfGames.count() == 0) {
+                    println("Game over!")
+                    Game.over = true
+                } else {
+                    println("Game #${Game.numOfGames[0]}")
+                    drawInnerPart()
+                }
+            }
         }
 
         private fun drawBottom() {
@@ -241,8 +286,8 @@ class Board {
         }
 
         fun columnIsFull(player: Player): Boolean {
-            val fistrow = boardField.get(0)
-            val playerCell = fistrow.rowOfCells.get(player.choice!!.toInt() - 1)
+            val fistRow = boardField[0]
+            val playerCell = fistRow.rowOfCells[player.choice!!.toInt() - 1]
             return !playerCell.checkCell()
         }
     }
@@ -250,8 +295,12 @@ class Board {
 
 class Game {
     companion object {
+        var singleGame = true
+        var numOfGames = mutableListOf<String>()
         var over: Boolean = false
         var allChoices = mutableListOf<String>()
+        var player1 = Player()
+        var player2 = Player()
 
         @JvmStatic
         fun greeting() {
@@ -265,6 +314,7 @@ class Game {
                     println("Press Enter for default (6 x 7)")
                     Board.dimensionsBoard = readLine()?.trim()?.replace("\\s".toRegex(), "")
                     if (Board.dimensionsBoard == "") {
+                        howManyGames()
                         Board.drawBoard(player1, player2)
                         break
                     } else {
@@ -273,6 +323,7 @@ class Game {
                         Board.boardCol = dimensionsOnboardArr?.get(1).toString().toInt()
                         if (Board.boardRow in 5..9) {
                             if (Board.boardCol in 5..9) {
+                                howManyGames()
                                 Board.drawBoard(player1, player2)
                                 break
                             } else {
@@ -325,12 +376,32 @@ class Game {
                 scenarios(player, c)
             }
         }
+
+        private fun howManyGames() {
+            println("Do you want to play single or multiple games?")
+            println("For a single game, input 1 or press Enter")
+            println("Input a number of games:")
+            try {
+                var userInput = readLine()
+                var gameNumber = if (userInput == "") 1 else (userInput!!.toInt())
+                if (gameNumber == 0) {
+                    println("Invalid input")
+                    howManyGames()
+                }
+                for (i in 1..gameNumber) {
+                    numOfGames.add(i.toString())
+                }
+            } catch (e: Exception) {
+                println("Invalid input")
+                howManyGames()
+            }
+        }
     }
 }
 
 fun main() {
-    val player1 = Player()
-    val player2 = Player()
+    val player1 = Game.player1
+    val player2 = Game.player2
     var gameSwitchBoolean = true
 
     Game.greeting()
@@ -338,7 +409,6 @@ fun main() {
     player2.setpName("Second player's name:")
     Game.askForDimensions(player1, player2)
     println()
-
     while (!Game.over) {
         when (gameSwitchBoolean) {
             true -> {
